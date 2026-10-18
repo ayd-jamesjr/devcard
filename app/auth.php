@@ -1,4 +1,3 @@
-
 <?php
 /**
  * DevCard authentication and session helpers.

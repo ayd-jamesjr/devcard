@@ -1,4 +1,3 @@
-
 <?php
 // DevCard main homepage.
 // Keep this page independent of login sessions so it can

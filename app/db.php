@@ -1,4 +1,3 @@
-
 <?php
 
 $projectRoot = dirname(__DIR__);
