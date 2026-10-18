@@ -1,4 +1,3 @@
-
 <?php
 
 // Start a secure session for the user.
