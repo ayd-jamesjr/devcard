@@ -1,9 +1,12 @@
 
 <?php
+// IMPORTANT: Save this file as UTF-8 without BOM.
+// No HTML, spaces, or output should appear before this opening PHP tag.
 
 require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/db.php';
 
+// Only logged-in users can access the dashboard.
 require_login();
 
 $userId = (int) $_SESSION['user_id'];
@@ -17,8 +20,9 @@ $stmt = $pdo->prepare(
 );
 
 $stmt->execute(['id' => $userId]);
-$user = $stmt->fetch();
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
 
+// If the account no longer exists, clear the session and redirect.
 if (!$user) {
     $_SESSION = [];
 
@@ -28,11 +32,14 @@ if (!$user) {
         setcookie(
             session_name(),
             '',
-            time() - 42000,
-            $params['path'],
-            $params['domain'],
-            $params['secure'],
-            $params['httponly']
+            [
+                'expires' => time() - 42000,
+                'path' => $params['path'],
+                'domain' => $params['domain'],
+                'secure' => $params['secure'],
+                'httponly' => $params['httponly'],
+                'samesite' => $params['samesite'] ?? 'Lax',
+            ]
         );
     }
 
@@ -44,7 +51,7 @@ if (!$user) {
 
 $_SESSION['user_name'] = $user['name'];
 
-// Check whether the user has created a portfolio.
+// Load the user's portfolio, if one exists.
 $stmt = $pdo->prepare(
     'SELECT id, slug, is_published
      FROM portfolios
@@ -53,19 +60,20 @@ $stmt = $pdo->prepare(
 );
 
 $stmt->execute(['user_id' => $userId]);
-$portfolio = $stmt->fetch();
+$portfolio = $stmt->fetch(PDO::FETCH_ASSOC);
 
-$hasPortfolio = (bool) $portfolio;
+$hasPortfolio = is_array($portfolio);
+
 $isPublished = $hasPortfolio
     && (int) $portfolio['is_published'] === 1;
 
+// Build the public portfolio URL.
 $publicUrl = '';
 
 if ($isPublished && !empty($portfolio['slug'])) {
     $publicUrl = 'public.php?slug='
         . rawurlencode($portfolio['slug']);
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -77,8 +85,58 @@ if ($isPublished && !empty($portfolio['slug'])) {
     <link rel="stylesheet" href="assets/css/auth.css">
 
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+        }
+
+        .site-nav {
+            width: 100%;
+            padding: 16px 5%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 14px;
+            border-bottom: 1px solid #333;
+            background: #111;
+        }
+
+        .site-nav .brand {
+            margin: 0;
+            text-decoration: none;
+            font-size: 23px;
+            font-weight: 800;
+            color: #f5f5f5;
+        }
+
+        .site-nav .brand span {
+            color: #e4b64d;
+        }
+
+        .site-nav-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .site-nav-links a {
+            color: #ddd;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .site-nav-links a:hover {
+            color: #e4b64d;
+        }
+
         .dashboard-card {
+            width: min(750px, 92%);
             max-width: 750px;
+            margin: 35px auto;
         }
 
         .welcome,
@@ -145,7 +203,7 @@ if ($isPublished && !empty($portfolio['slug'])) {
         }
 
         .status {
-            margin-top: 12px;
+            margin-top: 16px;
             color: #c6c6c6;
             overflow-wrap: anywhere;
         }
@@ -160,15 +218,44 @@ if ($isPublished && !empty($portfolio['slug'])) {
             overflow-wrap: anywhere;
             color: #e4b64d;
         }
+
+        @media (max-width: 520px) {
+            .site-nav {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .dashboard-actions {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .dashboard-actions a,
+            .dashboard-actions button {
+                text-align: center;
+                width: 100%;
+            }
+        }
     </style>
 </head>
 
 <body>
-<main class="auth-card dashboard-card">
 
+<header class="site-nav">
     <a class="brand" href="index.php">
         DevCard<span>.</span>
     </a>
+
+    <nav class="site-nav-links" aria-label="Main navigation">
+        <a href="index.php">Home</a>
+        <a href="dashboard.php">Dashboard</a>
+        <a href="portfolio.php">Portfolio</a>
+        <a href="projects.php">Projects</a>
+        <a href="publish.php">Publish</a>
+    </nav>
+</header>
+
+<main class="auth-card dashboard-card">
 
     <section class="welcome">
         <h1>Welcome, <?= e($user['name']) ?>!</h1>
@@ -219,6 +306,7 @@ if ($isPublished && !empty($portfolio['slug'])) {
 
         <p class="status">
             <strong>Portfolio status:</strong>
+
             <?php if (!$hasPortfolio): ?>
                 Not created yet
             <?php elseif ($isPublished): ?>
@@ -240,7 +328,7 @@ if ($isPublished && !empty($portfolio['slug'])) {
             <input
                 type="hidden"
                 name="csrf_token"
-                value="<?= e($_SESSION['csrf_token']) ?>"
+                value="<?= e($_SESSION['csrf_token'] ?? '') ?>"
             >
 
             <button type="submit" class="secondary-action">
@@ -250,5 +338,6 @@ if ($isPublished && !empty($portfolio['slug'])) {
     </div>
 
 </main>
+
 </body>
 </html>
