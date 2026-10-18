@@ -3,7 +3,9 @@
 !.env.example
 .git
 .vscode
-/certs/
+
+/certs/*
+!/certs/tidb-ca.pem
 test-db.php
 
 .DS_Store
