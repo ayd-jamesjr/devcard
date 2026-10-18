@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.git
+.vscode
+/certs/
+test-db.php
+
+.DS_Store
+.idea/
+.vscode/
+vendor/
+
