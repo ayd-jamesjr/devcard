@@ -1,11 +1,15 @@
 
 <?php
+/**
+ * DevCard authentication and session helpers.
+ * IMPORTANT: No spaces, HTML, or output before this opening PHP tag.
+ */
 
-// Start the session before sending any HTML output.
+// Start the session before sending HTML output.
 if (session_status() === PHP_SESSION_NONE) {
     if (headers_sent($file, $line)) {
         error_log(
-            "DevCard session error: Output started in {$file} on line {$line} before the session started."
+            "DevCard session error: Output started in {$file} on line {$line}."
         );
     } else {
         $isHttps = (
@@ -23,16 +27,16 @@ if (session_status() === PHP_SESSION_NONE) {
             'samesite' => 'Lax',
         ]);
 
-        // Start the session.
         session_start();
     }
 }
 
-// Create a CSRF token for form security.
-if (session_status() === PHP_SESSION_ACTIVE) {
-    if (empty($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-    }
+// Create a CSRF token when the session is active.
+if (
+    session_status() === PHP_SESSION_ACTIVE
+    && empty($_SESSION['csrf_token'])
+) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
 // Safely escape text before displaying it in HTML.
@@ -52,6 +56,7 @@ if (!function_exists('csrf_is_valid')) {
     function csrf_is_valid(mixed $token): bool
     {
         return is_string($token)
+            && session_status() === PHP_SESSION_ACTIVE
             && isset($_SESSION['csrf_token'])
             && hash_equals($_SESSION['csrf_token'], $token);
     }
@@ -62,7 +67,18 @@ if (!function_exists('require_login')) {
     function require_login(): void
     {
         if (empty($_SESSION['user_id'])) {
-            header('Location: login.php');
+            // Redirect to the site's login page.
+            $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+            $basePath = rtrim(
+                str_replace('\\', '/', dirname($scriptName)),
+                '/'
+            );
+
+            if ($basePath === '/' || $basePath === '.') {
+                $basePath = '';
+            }
+
+            header('Location: ' . $basePath . '/login.php');
             exit;
         }
     }
